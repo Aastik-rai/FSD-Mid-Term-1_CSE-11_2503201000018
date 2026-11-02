@@ -10,6 +10,7 @@ const books = [
         category: "Programming",
         quantity: 5,
         available: 5
+        
     },
     {
         id: 2,
@@ -83,45 +84,33 @@ const server = http.createServer((req, res) => {
     }
 
     else if (url.startsWith("/api/books/") && method === "PUT") {
-
         const id = url.split("/")[3];
-
         const index = books.findIndex((b) => b.id == id);
-
         if (index == -1) {
             res.statusCode = 404;
             return res.end("Book not found");
         }
-
         let body = "";
-
         req.on("data", (content) => {
             body += content;
         });
-
         req.on("end", () => {
 
             const updatedBook = JSON.parse(body);
-
             if (updatedBook.id && updatedBook.id != id) {
 
                 res.statusCode = 400;
                 return res.end("Book ID cannot be changed");
             }
-
             if (!updatedBook.title || !updatedBook.author ||
                 !updatedBook.category || !updatedBook.quantity) {
-
                 res.statusCode = 400;
                 return res.end("All fields are required");
             }
-
             if (updatedBook.quantity <= 0) {
-
                 res.statusCode = 400;
                 return res.end("Quantity must be greater than 0");
             }
-
             books[index] = {
                 id: books[index].id,
                 title: updatedBook.title,
@@ -130,22 +119,80 @@ const server = http.createServer((req, res) => {
                 quantity: updatedBook.quantity,
                 available: updatedBook.quantity
             };
-
             res.statusCode = 200;
             res.setHeader("Content-Type", "application/json");
-
             res.end(JSON.stringify({
                 message: "Book updated successfully",
                 book: books[index]
             }));
         });
     }
+    else if (url.startsWith("/api/books/") && method === "DELETE") {
+        const id = url.split("/")[3];
+        const index = books.findIndex((b) => b.id == id);
+        if (index == -1) {
+            res.statusCode = 404;
+            return res.end("Book not found");
+        }
+        books.splice(index, 1);
+        res.statusCode = 200;
+        res.end("Book deleted successfully");
+    }
+    else if (url.startsWith("/api/search") && method === "GET") {
+        const value = url.split("=")[1];
+        if (!value) {
+            res.statusCode = 400;
+            return res.end("Search value is required");
+        }
+        const result = books.filter((b) =>
+            b.title.toLowerCase().includes(value.toLowerCase()) ||
+            b.author.toLowerCase().includes(value.toLowerCase()) ||
+            b.category.toLowerCase().includes(value.toLowerCase())
+        );
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify(result));
+    }
 
+
+
+    else if (url.endsWith("/issue") && method === "POST") {
+        const id = url.split("/")[3];
+        const book = books.find((b) => b.id == id);
+        if (!book) {
+            res.statusCode = 404;
+            return res.end("Book not found");
+        }
+        if (book.available <= 0) {
+            res.statusCode = 400;
+            return res.end("Book not available");
+        }
+        book.available--;
+        res.statusCode = 200;
+        res.end("Book issued successfully");
+    }
+    else if (url.endsWith("/return") && method === "POST") {
+        const id = url.split("/")[3];
+        const book = books.find((b) => b.id == id);
+        if (!book) {
+            res.statusCode = 404;
+            return res.end("Book not found");
+        }
+        if (book.available >= book.quantity) {
+            res.statusCode = 400;
+            return res.end("All books are already returned");
+        }
+        book.available++;
+        res.statusCode = 200;
+        res.end("Book returned successfully");
+    }
+
+
+    
 
 });
 
+
 server.listen(port, () => {
-
     console.log(`Server is running on port ${port}`);
-
 });
